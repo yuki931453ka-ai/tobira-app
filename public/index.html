@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tobira - 就職活動向けAIサービス</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚪</text></svg>">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Noto+Sans+JP:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="app">
+    <!-- ============ ログイン画面 ============ -->
+    <div id="login-section" class="section">
+      <div class="login-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+        <div class="grid-lines"></div>
+      </div>
+      <div class="login-card glass">
+        <div class="logo-area">
+          <div class="logo-mark">
+            <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
+              <rect x="6" y="8" width="28" height="40" rx="4" stroke="url(#g1)" stroke-width="2.5" fill="none"/>
+              <rect x="22" y="8" width="28" height="40" rx="4" stroke="url(#g2)" stroke-width="2.5" fill="rgba(255,255,255,0.08)"/>
+              <circle cx="44" cy="28" r="2.5" fill="#E8734A"/>
+              <defs>
+                <linearGradient id="g1" x1="6" y1="8" x2="34" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#E8734A"/><stop offset="1" stop-color="#F09070"/>
+                </linearGradient>
+                <linearGradient id="g2" x1="22" y1="8" x2="50" y2="48" gradientUnits="userSpaceOnUse">
+                  <stop stop-color="#2A6B5A"/><stop offset="1" stop-color="#3D8B74"/>
+                </linearGradient>
+              </defs>
+            </svg>
+          </div>
+          <h1 class="logo-text">Tobira</h1>
+          <p class="tagline">AIがあなたの就職活動を支援します</p>
+        </div>
+        <form id="login-form">
+          <div class="input-group">
+            <input type="email" id="email" required placeholder=" ">
+            <label for="email">メールアドレス</label>
+            <div class="input-line"></div>
+          </div>
+          <div class="input-group">
+            <input type="password" id="password" required placeholder=" ">
+            <label for="password">パスワード</label>
+            <div class="input-line"></div>
+          </div>
+          <button type="submit" class="btn-glow">ログイン</button>
+          <p id="login-error" class="error-text"></p>
+        </form>
+        <p class="powered-by">Powered by Claude AI</p>
+      </div>
+    </div>
+
+    <!-- ============ パスワード変更画面 ============ -->
+    <div id="pw-section" class="section hidden">
+      <div class="login-bg">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+      </div>
+      <div class="login-card glass">
+        <div class="logo-area logo-area-sm">
+          <svg width="36" height="36" viewBox="0 0 56 56" fill="none">
+            <rect x="6" y="8" width="28" height="40" rx="4" stroke="#E8734A" stroke-width="2.5" fill="none"/>
+            <rect x="22" y="8" width="28" height="40" rx="4" stroke="#2A6B5A" stroke-width="2.5" fill="rgba(255,255,255,0.08)"/>
+            <circle cx="44" cy="28" r="2.5" fill="#E8734A"/>
+          </svg>
+          <span class="logo-text-inline">Tobira</span>
+        </div>
+        <h2 id="greeting-msg" class="greeting"></h2>
+        <div class="notice-bar">初回ログインのため、パスワードを変更してください。</div>
+        <form id="pw-form">
+          <div class="input-group">
+            <input type="password" id="cur-pw" required placeholder=" ">
+            <label for="cur-pw">現在のパスワード</label>
+            <div class="input-line"></div>
+          </div>
+          <div class="input-group">
+            <input type="password" id="new-pw" required minlength="8" placeholder=" ">
+            <label for="new-pw">新しいパスワード（8文字以上）</label>
+            <div class="input-line"></div>
+          </div>
+          <div class="input-group">
+            <input type="password" id="confirm-pw" required minlength="8" placeholder=" ">
+            <label for="confirm-pw">新しいパスワード（確認）</label>
+            <div class="input-line"></div>
+          </div>
+          <button type="submit" class="btn-glow">パスワードを変更</button>
+          <p id="pw-error" class="error-text"></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- ============ メインチャット画面 ============ -->
+    <div id="main-section" class="section hidden">
+      <header class="top-bar">
+        <div class="top-bar-inner">
+          <div class="top-bar-logo">
+            <svg width="24" height="24" viewBox="0 0 56 56" fill="none">
+              <rect x="6" y="8" width="28" height="40" rx="4" stroke="#E8734A" stroke-width="2.5" fill="none"/>
+              <rect x="22" y="8" width="28" height="40" rx="4" stroke="white" stroke-width="2.5" fill="rgba(255,255,255,0.1)"/>
+              <circle cx="44" cy="28" r="2.5" fill="#E8734A"/>
+            </svg>
+            <span>Tobira</span>
+          </div>
+          <div class="top-bar-right">
+            <span id="display-name" class="user-badge"></span>
+            <button id="logout-btn" class="btn-ghost">ログアウト</button>
+          </div>
+        </div>
+      </header>
+
+      <div class="main-layout">
+        <!-- 左: 進捗パネル -->
+        <aside id="progress-panel" class="progress-panel">
+          <h3 class="panel-title">収集状況</h3>
+          <div class="progress-ring-container">
+            <svg class="progress-ring" width="100" height="100">
+              <circle cx="50" cy="50" r="42" stroke="rgba(255,255,255,0.1)" stroke-width="6" fill="none"/>
+              <circle id="progress-circle" cx="50" cy="50" r="42" stroke="url(#prog-grad)" stroke-width="6" fill="none"
+                stroke-dasharray="263.9" stroke-dashoffset="263.9" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+              <defs>
+                <linearGradient id="prog-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="#E8734A"/><stop offset="100%" stop-color="#3D8B74"/>
+                </linearGradient>
+              </defs>
+            </svg>
+            <span id="progress-pct" class="progress-pct">0%</span>
+          </div>
+          <ul id="field-list" class="field-list">
+            <li data-field="fullname"><span class="dot"></span>氏名</li>
+            <li data-field="birthDate"><span class="dot"></span>生年月日</li>
+            <li data-field="address"><span class="dot"></span>住所・連絡先</li>
+            <li data-field="education"><span class="dot"></span>学歴</li>
+            <li data-field="qualifications"><span class="dot"></span>資格</li>
+            <li data-field="careers"><span class="dot"></span>職務経歴</li>
+            <li data-field="motivation"><span class="dot"></span>志望動機</li>
+            <li data-field="personality"><span class="dot"></span>性格・趣味等</li>
+            <li data-field="essayValues"><span class="dot"></span>作文素材</li>
+          </ul>
+          <button id="generate-btn" class="btn-generate" disabled>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+            </svg>
+            ドラフトを生成
+          </button>
+        </aside>
+
+        <!-- 中央: チャット -->
+        <main class="chat-area">
+          <div id="messages" class="messages"></div>
+          <div id="typing-indicator" class="typing-indicator hidden">
+            <div class="typing-dots">
+              <span></span><span></span><span></span>
+            </div>
+            <span class="typing-label">Tobira が考えています...</span>
+          </div>
+          <form id="chat-form" class="chat-input-area">
+            <div class="chat-input-wrapper">
+              <textarea id="chat-input" rows="1" placeholder="メッセージを入力..." required></textarea>
+              <button type="submit" class="btn-send" id="send-btn">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                  <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                </svg>
+              </button>
+            </div>
+          </form>
+        </main>
+      </div>
+
+      <!-- ドラフト表示モーダル -->
+      <div id="draft-modal" class="modal hidden">
+        <div class="modal-overlay"></div>
+        <div class="modal-content glass-dark">
+          <div class="modal-header">
+            <h2>生成されたドラフト</h2>
+            <div class="modal-actions">
+              <span class="ai-badge">AI Generated</span>
+              <button class="btn-close" onclick="closeDraftModal()">&times;</button>
+            </div>
+          </div>
+          <div id="draft-content" class="draft-body"></div>
+          <div class="draft-edit-area">
+            <p class="edit-hint">修正要望を自然言語で伝えてください</p>
+            <div class="edit-row">
+              <input type="text" id="edit-input" placeholder="例: 志望動機をもう少し具体的にしてほしい">
+              <button class="btn-edit" id="edit-btn" onclick="editDraft()">修正</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "moushikomi-app",
+  "version": "1.0.0",
+  "description": "小平市社協 嘱託職員募集申込書作成アプリ",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "express": "^4.21.0",
+    "express-session": "^1.18.1",
+    "dotenv": "^16.4.7"
+  }
+}
