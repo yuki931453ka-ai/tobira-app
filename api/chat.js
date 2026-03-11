@@ -5,9 +5,14 @@ const anthropic = new Anthropic.default({
   apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
+const today = new Date().toISOString().slice(0, 10);
+
 const SYSTEM_PROMPT = `あなたは「Tobira」という就職活動支援AIアシスタントです。
 ユーザーの応募書類（小平市社会福祉協議会 嘱託職員募集申込書）を作成するため、
 会話形式で必要な情報をヒアリングしていきます。
+
+**今日の日付: ${today}**
+年齢を計算する際は、必ずこの日付を基準にしてください。
 
 ${GUIDE_CONTEXT}
 
