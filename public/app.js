@@ -118,11 +118,16 @@ $('#chat-input').addEventListener('input', function() {
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 
-// Enter to send (Shift+Enter for newline)
+// Shift+Enter or send button only (IME変換中は送信しない)
 $('#chat-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && !e.shiftKey) {
-    e.preventDefault();
-    $('#chat-form').dispatchEvent(new Event('submit'));
+  if (e.key === 'Enter') {
+    if (e.isComposing || e.keyCode === 229) return; // IME変換中は無視
+    if (e.shiftKey) {
+      // Shift+Enter で送信
+      e.preventDefault();
+      $('#chat-form').dispatchEvent(new Event('submit'));
+    }
+    // Enter のみ → 改行（デフォルト動作）
   }
 });
 
