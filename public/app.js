@@ -10,6 +10,15 @@ let chatHistory = []; // { role, content }
 let collectedData = {};
 let currentDraft = '';
 
+// === Password Toggle ===
+function togglePw(inputId, btn) {
+  const input = document.getElementById(inputId);
+  const isPassword = input.type === 'password';
+  input.type = isPassword ? 'text' : 'password';
+  btn.querySelector('.eye-open').style.display = isPassword ? 'none' : '';
+  btn.querySelector('.eye-closed').style.display = isPassword ? '' : 'none';
+}
+
 // === Sections ===
 const sections = {
   login: $('#login-section'),
@@ -98,8 +107,13 @@ function enterMainChat() {
 }
 
 // === Chat ===
+let canSubmit = false; // 送信ボタンまたはShift+Enterで明示的に許可された場合のみtrue
+
 $('#chat-form').addEventListener('submit', (e) => {
   e.preventDefault();
+  if (!canSubmit) return;
+  canSubmit = false;
+
   const input = $('#chat-input');
   const text = input.value.trim();
   if (!text) return;
@@ -112,22 +126,33 @@ $('#chat-form').addEventListener('submit', (e) => {
   sendToAI();
 });
 
+// 送信ボタンクリック時にcanSubmitを有効化
+$('#send-btn').addEventListener('click', () => {
+  canSubmit = true;
+});
+
 // Auto-resize textarea
 $('#chat-input').addEventListener('input', function() {
   this.style.height = 'auto';
   this.style.height = Math.min(this.scrollHeight, 120) + 'px';
 });
 
-// Shift+Enter or send button only (IME変換中は送信しない)
+// キーボード操作:
+// - Enter単体 → 改行
+// - Shift+Enter (IME変換中でない) → 送信
+// - IME変換中のEnter → 変換確定のみ（何もしない）
 $('#chat-input').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') {
-    if (e.isComposing || e.keyCode === 229) return; // IME変換中は無視
+  if (e.key === 'Enter' || e.keyCode === 13) {
+    // IME変換中は全て無視（変換確定に使う）
+    if (e.isComposing || e.keyCode === 229) return;
+
     if (e.shiftKey) {
-      // Shift+Enter で送信
+      // Shift+Enter → 送信
       e.preventDefault();
+      canSubmit = true;
       $('#chat-form').dispatchEvent(new Event('submit'));
     }
-    // Enter のみ → 改行（デフォルト動作）
+    // Enter単体 → テキストエリアのデフォルト改行
   }
 });
 

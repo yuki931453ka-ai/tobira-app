@@ -242,6 +242,10 @@ body {
   font-family: inherit;
   transition: all 0.3s;
 }
+.input-group input[type="password"],
+.input-group input.has-toggle {
+  padding-right: 42px;
+}
 
 .input-group label {
   position: absolute;
@@ -282,6 +286,30 @@ body {
 .input-group input:focus ~ .input-line {
   left: 0;
   width: 100%;
+}
+
+/* Password toggle */
+.pw-toggle {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+  z-index: 2;
+}
+.pw-toggle:hover {
+  color: var(--primary);
+}
+.input-group .pw-toggle ~ .input-line {
+  /* input-lineの位置調整不要 */
 }
 
 /* Glow button */
