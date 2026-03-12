@@ -11,6 +11,7 @@ let chatHistory = []; // { role, content }
 let collectedData = {};
 let currentDraft = '';
 let currentStructured = null;
+let currentSessionId = null;
 
 // === Password Toggle ===
 function togglePw(inputId, btn) {
@@ -101,32 +102,102 @@ $('#logout-btn').addEventListener('click', () => {
   $('#password').value = '';
 });
 
-// === Chat History Persistence (localStorage) ===
-function saveHistory() {
-  if (!currentEmail) return;
-  const data = {
-    chatHistory,
-    collectedData,
-    userName,
-  };
+// === Multi-Session Persistence ===
+function getSessionsKey() { return 'tobira_sessions_' + currentEmail; }
+
+function getAllSessions() {
   try {
-    localStorage.setItem('tobira_chat_' + currentEmail, JSON.stringify(data));
-  } catch { /* localStorage full — ignore */ }
+    const raw = localStorage.getItem(getSessionsKey());
+    return raw ? JSON.parse(raw) : [];
+  } catch { return []; }
+}
+
+function saveAllSessions(sessions) {
+  try { localStorage.setItem(getSessionsKey(), JSON.stringify(sessions)); } catch { /* ignore */ }
+}
+
+function saveHistory() {
+  if (!currentEmail || !currentSessionId) return;
+  try {
+    const sessions = getAllSessions();
+    const idx = sessions.findIndex(s => s.id === currentSessionId);
+    const label = getSessionLabel();
+    const sessionData = {
+      id: currentSessionId,
+      label,
+      updatedAt: new Date().toISOString(),
+      chatHistory, collectedData, userName,
+      draft: currentDraft || null,
+      structured: currentStructured || null,
+    };
+    if (idx >= 0) sessions[idx] = sessionData;
+    else sessions.unshift(sessionData);
+    saveAllSessions(sessions);
+  } catch { /* ignore */ }
+}
+
+function getSessionLabel() {
+  const name = collectedData.fullname || '';
+  if (name) return name;
+  const firstUser = chatHistory.find(m => m.role === 'user');
+  if (firstUser) return firstUser.content.slice(0, 40);
+  return '新規作成';
 }
 
 function loadHistory() {
   if (!currentEmail) return false;
   try {
-    const raw = localStorage.getItem('tobira_chat_' + currentEmail);
-    if (!raw) return false;
-    const data = JSON.parse(raw);
-    if (data.chatHistory && data.chatHistory.length > 0) {
-      chatHistory = data.chatHistory;
-      collectedData = data.collectedData || {};
-      return true;
+    const sessions = getAllSessions();
+    // 旧形式からの移行
+    const legacyRaw = localStorage.getItem('tobira_chat_' + currentEmail);
+    if (legacyRaw && sessions.length === 0) {
+      const legacy = JSON.parse(legacyRaw);
+      if (legacy.chatHistory && legacy.chatHistory.length > 0) {
+        const sid = 'session_' + Date.now();
+        sessions.push({
+          id: sid, label: '移行されたセッション',
+          updatedAt: new Date().toISOString(),
+          chatHistory: legacy.chatHistory,
+          collectedData: legacy.collectedData || {},
+          userName: legacy.userName || userName,
+        });
+        saveAllSessions(sessions);
+        localStorage.removeItem('tobira_chat_' + currentEmail);
+      }
     }
+    if (sessions.length === 0) return false;
+    const latest = sessions[0];
+    currentSessionId = latest.id;
+    chatHistory = latest.chatHistory;
+    collectedData = latest.collectedData || {};
+    currentDraft = latest.draft || '';
+    currentStructured = latest.structured || null;
+    return true;
   } catch { /* ignore */ }
   return false;
+}
+
+function loadSession(sessionId) {
+  const sessions = getAllSessions();
+  const session = sessions.find(s => s.id === sessionId);
+  if (!session) return;
+  currentSessionId = session.id;
+  chatHistory = session.chatHistory;
+  collectedData = session.collectedData || {};
+  currentDraft = session.draft || '';
+  currentStructured = session.structured || null;
+  userName = session.userName || userName;
+  $('#messages').innerHTML = '';
+  const banner = $('#welcome-banner');
+  if (banner) banner.classList.add('hidden');
+  restoreMessages();
+  if (currentDraft) $('#generate-btn').disabled = false;
+}
+
+function deleteSession(sessionId) {
+  let sessions = getAllSessions();
+  sessions = sessions.filter(s => s.id !== sessionId);
+  saveAllSessions(sessions);
 }
 
 function restoreMessages() {
@@ -153,18 +224,116 @@ function enterMainChat() {
   showSection('main');
   $('#display-name').textContent = userName;
 
-  // 既存の履歴があるか確認
   if (loadHistory()) {
-    // 既存の会話を復元
     const banner = $('#welcome-banner');
     if (banner) banner.classList.add('hidden');
     restoreMessages();
   } else {
-    // AIに初回メッセージを送って会話を開始
+    currentSessionId = 'session_' + Date.now();
     chatHistory.push({ role: 'user', content: `こんにちは。私の名前は${userName}です。応募書類の作成をお願いします。` });
     sendToAI();
   }
 }
+
+function resetToNewSession() {
+  saveHistory(); // 現在の進捗を保存
+  chatHistory = [];
+  collectedData = {};
+  currentDraft = '';
+  currentStructured = null;
+  currentSessionId = 'session_' + Date.now();
+  $('#messages').innerHTML = '';
+  const banner = $('#welcome-banner');
+  if (banner) banner.classList.add('hidden');
+  $('#generate-btn').disabled = true;
+  $('#progress-pct').textContent = '0%';
+  const circle = $('#progress-circle');
+  circle.style.strokeDashoffset = 2 * Math.PI * 42;
+  $$('.field-list li').forEach(li => li.classList.remove('filled'));
+  chatHistory.push({ role: 'user', content: `こんにちは。私の名前は${userName}です。応募書類の作成をお願いします。` });
+  sendToAI();
+}
+
+// === History Panel ===
+$('#history-btn').addEventListener('click', () => {
+  renderHistoryPanel();
+  $('#history-panel').classList.remove('hidden');
+});
+$('#history-close-btn').addEventListener('click', () => {
+  $('#history-panel').classList.add('hidden');
+});
+document.addEventListener('click', (e) => {
+  if (e.target.classList.contains('side-panel-overlay')) {
+    $('#history-panel').classList.add('hidden');
+  }
+});
+
+function escapeHtml(str) {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function calcProgressPct(data) {
+  let filled = 0;
+  const total = Object.keys(FIELD_MAP).length;
+  Object.entries(FIELD_MAP).forEach(([, keys]) => {
+    const isFilled = keys.some(k => {
+      const val = data[k];
+      if (Array.isArray(val)) return val.length > 0;
+      return val && val.toString().trim() !== '';
+    });
+    if (isFilled) filled++;
+  });
+  return Math.round((filled / total) * 100);
+}
+
+function renderHistoryPanel() {
+  const list = $('#history-list');
+  const sessions = getAllSessions();
+  if (sessions.length === 0) {
+    list.innerHTML = '<p class="history-empty">履歴はまだありません</p>';
+    return;
+  }
+  list.innerHTML = '';
+  sessions.forEach(s => {
+    const item = document.createElement('div');
+    item.className = 'history-item' + (s.id === currentSessionId ? ' active' : '');
+    const date = new Date(s.updatedAt);
+    const dateStr = `${date.getMonth()+1}/${date.getDate()} ${date.getHours()}:${String(date.getMinutes()).padStart(2,'0')}`;
+    const msgCount = s.chatHistory ? s.chatHistory.length : 0;
+    const pct = calcProgressPct(s.collectedData || {});
+    item.innerHTML = `
+      <div class="history-item-main">
+        <div class="history-label">${escapeHtml(s.label || '新規作成')}</div>
+        <div class="history-meta">${dateStr} / ${msgCount}メッセージ / 進捗${pct}%</div>
+      </div>
+      <div class="history-actions">
+        <button class="history-load-btn" title="開く">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
+        </button>
+        <button class="history-delete-btn" title="削除">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+        </button>
+      </div>
+    `;
+    item.querySelector('.history-load-btn').addEventListener('click', () => {
+      loadSession(s.id);
+      $('#history-panel').classList.add('hidden');
+    });
+    item.querySelector('.history-delete-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (confirm(`「${s.label || '新規作成'}」を削除しますか？`)) {
+        deleteSession(s.id);
+        if (s.id === currentSessionId) resetToNewSession();
+        renderHistoryPanel();
+      }
+    });
+    list.appendChild(item);
+  });
+}
+
+$('#new-doc-btn').addEventListener('click', () => {
+  resetToNewSession();
+});
 
 // === Chat ===
 let canSubmit = false;
