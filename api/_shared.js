@@ -9,12 +9,10 @@ const USERS = {
   'lj1000170@gmail.com': {
     password: 'kb19911226',
     name: '坂野 広平',
-    passwordChanged: false,
   },
   'admin': {
     password: 'k93145313',
     name: 'Admin',
-    passwordChanged: true,
   },
 };
 
