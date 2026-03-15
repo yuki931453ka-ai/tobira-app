@@ -188,6 +188,8 @@ function restoreMessages() {
 }
 
 // === Enter Main Chat ===
+let pendingUploads = [];
+
 function enterMainChat() {
   showSection('main');
   $('#display-name').textContent = userName;
@@ -196,30 +198,116 @@ function enterMainChat() {
     const banner = $('#welcome-banner');
     if (banner) banner.classList.add('hidden');
     restoreMessages();
-  } else {
-    currentSessionId = 'session_' + Date.now();
-    chatHistory.push({ role: 'user', content: `こんにちは。私の名前は${userName}です。応募書類の作成をお願いします。` });
-    sendToAI();
   }
+  // 履歴がない場合はウェルカムバナーの選択待ち
 }
 
-function resetToNewSession() {
-  saveHistory(); // 現在の進捗を保存
+function resetToWelcome() {
+  if (chatHistory.length > 0) saveHistory();
   chatHistory = [];
   collectedData = {};
   currentDraft = '';
   currentStructured = null;
-  currentSessionId = 'session_' + Date.now();
+  currentSessionId = null;
+  pendingUploads = [];
   $('#messages').innerHTML = '';
-  const banner = $('#welcome-banner');
-  if (banner) banner.classList.add('hidden');
+  $('#upload-zone').classList.add('hidden');
+  $('#upload-file-list').innerHTML = '';
+  $('#upload-start-btn').classList.add('hidden');
+  $('#welcome-banner').classList.remove('hidden');
   $('#generate-btn').disabled = true;
   $('#progress-pct').textContent = '0%';
   const circle = $('#progress-circle');
   circle.style.strokeDashoffset = 2 * Math.PI * 42;
   $$('.field-list li').forEach(li => li.classList.remove('filled'));
+}
+
+// === Start Mode Selection ===
+$('#start-scratch').addEventListener('click', () => {
+  $('#welcome-banner').classList.add('hidden');
+  currentSessionId = 'session_' + Date.now();
   chatHistory.push({ role: 'user', content: `こんにちは。私の名前は${userName}です。応募書類の作成をお願いします。` });
   sendToAI();
+});
+
+$('#start-upload').addEventListener('click', () => {
+  $('#welcome-banner').classList.add('hidden');
+  $('#upload-zone').classList.remove('hidden');
+  currentSessionId = 'session_' + Date.now();
+  pendingUploads = [];
+});
+
+// === Upload Zone ===
+$('#upload-back-btn').addEventListener('click', (e) => {
+  e.stopPropagation();
+  resetToWelcome();
+});
+
+const uploadZone = document.getElementById('upload-zone');
+const uploadZoneInput = document.getElementById('upload-zone-input');
+
+if (uploadZone) {
+  uploadZone.addEventListener('click', (e) => {
+    if (e.target.closest('.upload-start-btn') || e.target.closest('.upload-file-item') || e.target.closest('.btn-back')) return;
+    uploadZoneInput.click();
+  });
+  uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+  uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
+  uploadZone.addEventListener('drop', async (e) => {
+    e.preventDefault(); uploadZone.classList.remove('dragover');
+    await processUploadFiles(e.dataTransfer.files);
+  });
+}
+
+if (uploadZoneInput) {
+  uploadZoneInput.addEventListener('change', async (e) => {
+    await processUploadFiles(e.target.files);
+    e.target.value = '';
+  });
+}
+
+async function processUploadFiles(files) {
+  const listEl = $('#upload-file-list');
+  for (const file of files) {
+    const text = await readFileAsText(file);
+    if (text) {
+      pendingUploads.push({ name: file.name, text });
+      const item = document.createElement('div');
+      item.className = 'upload-file-item';
+      item.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><span>${file.name}</span>`;
+      listEl.appendChild(item);
+    }
+  }
+  if (pendingUploads.length > 0) {
+    $('#upload-start-btn').classList.remove('hidden');
+  }
+}
+
+$('#upload-start-btn').addEventListener('click', () => {
+  $('#upload-zone').classList.add('hidden');
+  if (!currentSessionId) currentSessionId = 'session_' + Date.now();
+  const fileNames = pendingUploads.map(f => f.name).join('、');
+  let uploadMsg = `こんにちは。私の名前は${userName}です。以下の書類をアップロードしました。内容を読み取って、申込書の作成をサポートしてください。\n\n`;
+  pendingUploads.forEach(f => {
+    uploadMsg += `【アップロードされた書類: ${f.name}】\n${f.text}\n\n`;
+  });
+  addMessage('user', `書類をアップロードしました: ${fileNames}`);
+  chatHistory.push({ role: 'user', content: uploadMsg });
+  pendingUploads = [];
+  sendToAI();
+});
+
+function readFileAsText(file) {
+  return new Promise((resolve) => {
+    if (file.type.startsWith('text/') || file.name.endsWith('.txt') || file.name.endsWith('.rtf')) {
+      const reader = new FileReader();
+      reader.onload = (e) => resolve(e.target.result);
+      reader.onerror = () => resolve(null);
+      reader.readAsText(file);
+    } else {
+      resolve(`（${file.name} - ${file.type || '不明な形式'}、${(file.size / 1024).toFixed(1)}KB）\n※このファイルの内容をテキストで貼り付けていただくか、内容を教えてください。`);
+    }
+  });
 }
 
 // === History Panel ===
@@ -300,7 +388,7 @@ function renderHistoryPanel() {
 }
 
 $('#new-doc-btn').addEventListener('click', () => {
-  resetToNewSession();
+  resetToWelcome();
 });
 
 // === Chat ===
