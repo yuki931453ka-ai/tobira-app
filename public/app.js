@@ -931,8 +931,8 @@ function renderApplicationForm(d) {
 
   const html = `
     <div class="form-page">
-      <h2 class="form-title">嘱託職員募集申込書</h2>
-      <p class="form-subtitle">社会福祉法人 小平市社会福祉協議会</p>
+      <h2 class="form-title">応募書類</h2>
+      <p class="form-subtitle"></p>
 
       <table class="form-table">
         <tr><th>氏名</th><td>${d.fullname || '【要記入】'}</td><th>ふりがな</th><td>${d.furigana || '【要記入】'}</td></tr>
@@ -993,7 +993,7 @@ function renderApplicationForm(d) {
 
     <div class="form-page">
       <h2 class="form-title">課題式作文</h2>
-      <p class="form-essay-topic">題目：「障がい者・児の相談業務及び一般事務」に対する基本的な姿勢について</p>
+      <p class="form-essay-topic"></p>
       <div class="form-essay-body">${(d.essay || '【要記入】').replace(/\n/g, '<br>')}</div>
       <p class="form-char-count">${d.essay ? d.essay.length + '字' : ''}</p>
     </div>
@@ -1104,7 +1104,7 @@ function exportText() {
   let text = '';
   if (currentStructured) {
     const d = currentStructured;
-    text += `嘱託職員募集申込書\n社会福祉法人 小平市社会福祉協議会\n\n`;
+    text += `応募書類\n\n`;
     text += `【基本情報】\n`;
     text += `氏名: ${d.fullname || ''}\nふりがな: ${d.furigana || ''}\n`;
     text += `生年月日: ${d.birthDate || ''}\n年齢: ${d.age || ''}歳\n`;
@@ -1126,7 +1126,7 @@ function exportText() {
     text += `\n【興味関心】\n${d.interests || ''}\n`;
     text += `\n【自覚している性格】\n${d.personality || ''}\n`;
     text += `\n【本人希望記入欄】\n${d.requests || ''}\n`;
-    text += `\n【課題式作文】\n題目：「障がい者・児の相談業務及び一般事務」に対する基本的な姿勢について\n\n`;
+    text += `\n【課題式作文・小論文】\n`;
     text += d.essay || '';
   } else {
     text = currentDraft;
