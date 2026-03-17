@@ -91,6 +91,7 @@ function saveHistory() {
     const sessions = getAllSessions();
     const idx = sessions.findIndex(s => s.id === currentSessionId);
     const label = getSessionLabel();
+    const msgs = $('#messages');
     const sessionData = {
       id: currentSessionId,
       label,
@@ -100,12 +101,15 @@ function saveHistory() {
       structured: currentStructured || null,
       uploads: uploadedFiles,
       hasDraft: !!currentDraft,
+      scrollTop: msgs ? msgs.scrollTop : 0,
     };
     if (idx >= 0) sessions[idx] = sessionData;
     else sessions.unshift(sessionData);
     saveAllSessions(sessions);
   } catch { /* ignore */ }
 }
+
+let savedScrollTop = 0; // セッション復元時のスクロール位置
 
 function getSessionLabel() {
   const name = collectedData.fullname || '';
@@ -143,6 +147,7 @@ function loadHistory() {
     collectedData = latest.collectedData || {};
     currentDraft = latest.draft || '';
     currentStructured = latest.structured || null;
+    savedScrollTop = latest.scrollTop || 0;
     return true;
   } catch { /* ignore */ }
   return false;
@@ -159,6 +164,7 @@ function loadSession(sessionId) {
   currentStructured = session.structured || null;
   userName = session.userName || userName;
   uploadedFiles = session.uploads || [];
+  savedScrollTop = session.scrollTop || 0;
   $('#messages').innerHTML = '';
   const banner = $('#welcome-banner');
   if (banner) banner.classList.add('hidden');
@@ -189,6 +195,15 @@ function restoreMessages() {
   if (lastAssistant && lastAssistant.content.includes('COLLECTION_COMPLETE')) {
     $('#generate-btn').disabled = false;
   }
+  // スクロール位置を復元（保存されていれば復元、なければ最下部へ）
+  requestAnimationFrame(() => {
+    if (savedScrollTop > 0) {
+      container.scrollTop = savedScrollTop;
+      savedScrollTop = 0;
+    } else {
+      container.scrollTop = container.scrollHeight;
+    }
+  });
 }
 
 // === Enter Main Chat ===
