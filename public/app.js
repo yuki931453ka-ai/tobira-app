@@ -437,6 +437,44 @@ function calcProgressPct(data) {
   return Math.round((filled / total) * 100);
 }
 
+function exportSessionChatLog(session) {
+  const lines = [];
+  const date = new Date(session.updatedAt);
+  const dateStr = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')} ${String(date.getHours()).padStart(2,'0')}:${String(date.getMinutes()).padStart(2,'0')}`;
+  lines.push(`=== Tobira チャット履歴 ===`);
+  lines.push(`セッションID: ${session.id}`);
+  lines.push(`ラベル: ${session.label || '新規作成'}`);
+  lines.push(`最終更新: ${dateStr}`);
+  lines.push(`メッセージ数: ${session.chatHistory ? session.chatHistory.length : 0}`);
+  if (session.uploads && session.uploads.length > 0) {
+    lines.push(`アップロード: ${session.uploads.map(u => u.name).join(', ')}`);
+  }
+  lines.push(`${'='.repeat(40)}\n`);
+
+  (session.chatHistory || []).forEach((msg, i) => {
+    const role = msg.role === 'user' ? '[ユーザー]' : '[Tobira AI]';
+    lines.push(`--- #${i + 1} ${role} ---`);
+    lines.push(msg.content);
+    lines.push('');
+  });
+
+  if (session.collectedData && Object.keys(session.collectedData).length > 0) {
+    lines.push(`${'='.repeat(40)}`);
+    lines.push(`=== 収集データ (JSON) ===`);
+    lines.push(JSON.stringify(session.collectedData, null, 2));
+  }
+
+  const text = lines.join('\n');
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const safeLabel = (session.label || 'session').replace(/[\\/:*?"<>|]/g, '_');
+  a.download = `tobira_chat_${safeLabel}_${session.id}.txt`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
 function renderHistoryPanel() {
   const list = $('#history-list');
   const sessions = getAllSessions();
@@ -462,6 +500,9 @@ function renderHistoryPanel() {
         ${uploadsHtml}
       </div>
       <div class="history-actions">
+        <button class="history-export-btn" title="チャット履歴をエクスポート">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+        </button>
         <button class="history-load-btn" title="開く">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>
         </button>
@@ -470,6 +511,10 @@ function renderHistoryPanel() {
         </button>
       </div>
     `;
+    item.querySelector('.history-export-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      exportSessionChatLog(s);
+    });
     item.querySelector('.history-load-btn').addEventListener('click', () => {
       loadSession(s.id);
       $('#history-panel').classList.add('hidden');
